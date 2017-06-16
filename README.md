@@ -2,7 +2,7 @@
 
 This project contains three Python tools:
 
-1. **A decorator `@modulize`** which turns a class into a (mock) Python module which can then be imported:
+1. [A decorator `@modulize`](#modulize) which turns a class into a (mock) Python module which can then be imported:
 	```python 
 	@modulize('my_module')
 	class my_dummy_class:
@@ -13,16 +13,14 @@ This project contains three Python tools:
 	my_function('foo') # foo bar
 	```
 
-2. **A Python script `combine_py_files.py`** which combines a directory of Python files with an entry point `__main__.py` into one `.py` file.  
+2. [A Python script `combine_py_files.py`](#combine) which combines a `.py` file and all the local `.py` files it imports into one `.py` file. 
 
-   The motivation is programming contests which require a single `.py` file.  This makes it is possible to break up a project into multiple files and combine them automatically in the end.
+   The motivations for this tool are programming contests which require a single `.py` file.  This makes it is possible to break up a project into multiple files and combine them automatically in the end.
 
-3. **A Python script `sync_combined_py_files.py`** which runs in the background, keeping track of changes to both the combined file and the source files, syncing changes between them.
-
-[See the documentation for more details.](documentation.md)
+3. [A Python script `sync_combined_py_files.py`](#sync) which runs in the background, keeping track of changes to both the combined file and the source files, syncing changes between them. **(In progress)**
 
 -----
-## `@modulize` decorator ##
+## <a name="modulize"></a> `@modulize` decorator ##
 
 ### `@modulize(module_name, dependencies=[])` ###
 
@@ -71,7 +69,7 @@ if __name__ == '__main__':
 
 Here are a few fine points:
 - Modules should be added in the order of their dependencies.
-- For the (rare) case of mutually dependent modules, one can pass a `dependencies` arguement to `@modulize`. This is only needed when the module being added comes before the module it depends on.  (Also, a.b.foo doesn't need to add `a.b` as a dependency.  This is done automatically.)
+- For the (rare) case of mutually dependent modules, one can pass a `dependencies` argument to `@modulize`. This is only needed when the module being added comes before the module it depends on.  (Also, a.b.foo doesn't need to add `a.b` as a dependency.  This is done automatically.)
 - The code in the dummy class is run at the time the class is created, not at that time of import.  *Be careful, this may effect the desired behavior.*
 - A module must be imported for it to be used.
 
@@ -118,16 +116,16 @@ def modulize(module_name, dependencies=[]):
 - Relative imports, e.g. `from . import foo` are not supported.
 - Code inside the underlying class will be run at the time of creation, not the time of import.
 - Nonstandard behavior might be observed if a variable has the same name as a submodule (for example. `a.b.foo = 5` as well as a module `a.b.foo`.)
-- The `imp` and `implibrary` modules have not been tested.
+- The `imp` and `importlib` modules have not been tested.
 - This is ultimately a _**hack of the import system**_ and one should not hope for an exact replica.  Nonetheless, I tried to make it close!
 
 -----
-## `combine_py_files.py` script ##
+## <a name="combine"></a> `combine_py_files.py` script ##
 
 ### Usage: `python combine_py_files.py entry_point output_file`  ###
 
 - **`entry_point`** is the file or directory to start (as if one was running `python entry_point`).  If it is a directory, it will start at the file `__main__.py` in that directory.
-- **`entry_point`** is the file to output
+- **`output_file`** is the name of the combined Python file.
 
 ### Example ###
 
@@ -157,7 +155,7 @@ $ python combine_py_files.py my_dir/ combined.py
 ... foo/__init__.py
 ... foo/bar.py
 ... __main__.py
-Sucessfully combined files.
+Successfully combined files.
 ```
 
 combined.py:
@@ -219,7 +217,15 @@ print(fb) # foo bar
 ```
 
 ### Notes ###
-- This script takes a very simple approach to finding
------
-## `sync_combined_py_files.py` script ##
+- This script has a very basic logic to find the module files and to determine the order to load them.  
+  - First it looks for lines containing `import ...` or `from ... import`.  These statements must be on their own line (possibly indented).  The script ignores all of the surrounding code *including whether or not the `import` statement is inside an `if` block*.
+  - Then it looks for the desired Python file and repeats the process.
 
+  This usually works in practice, but their are no guarantees.
+- All the modules are run at the beginning of the combined script, not during their import.  If the modules run code (and not just define functions and variables), then the behavior of the single combined Python script may be different from the original collection of scripts.
+
+
+-----
+## <a name="sync"></a> `sync_combined_py_files.py` script ##
+
+**Still in progress**
