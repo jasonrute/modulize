@@ -32,12 +32,9 @@ class MockModule(ModuleType):
             get_mock_module(package).__path__ = []
             setattr(get_mock_module(package), module, self)
 
-    def _set_class_(self, cls):
-        self._cls_ = cls
-        self.__doc__ = cls.__doc__
-
-    def __getattr__(self, name):
-        return getattr(self._cls_, name)
+    def _initialize_(self, module_code):
+        self.__dict__.update(module_code(self.__name__))
+        self.__doc__ = module_code.__doc__
 
 def get_mock_module(module_name):
     if module_name not in sys.modules:
@@ -46,11 +43,7 @@ def get_mock_module(module_name):
 
 def modulize(module_name, dependencies=[]):
     for d in dependencies: get_mock_module(d)
-    global __name__; stored_name, __name__ = __name__, module_name
-    def wrapper(cls):
-        get_mock_module(module_name)._set_class_(cls)
-        global __name__; __name__ = stored_name
-    return wrapper
+    return get_mock_module(module_name)._initialize_
 
 ##===========================================================================##
 """
@@ -65,21 +58,21 @@ main_section_str = \
 package_section_str = \
 """
 @modulize('{name}'{dependencies})
-class _{short_name}:
+def _{short_name}(__name__):
     ##----- Begin {file} {padded_dashes_0}##
 {text}
     ##----- End {file} {padded_dashes_1}##
-    pass
+    return locals()
 """
 
 module_section_str = \
 """
 @modulize('{name}'{dependencies})
-class _{short_name}:
+def _{short_name}(__name__):
     ##----- Begin {file} {padded_dashes_0}##
 {text}
     ##----- End {file} {padded_dashes_1}##
-    pass
+    return locals()
 """
 
 def get_modules_from_import_line(line):
