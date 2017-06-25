@@ -121,6 +121,41 @@ def parse_import_structure(package_dir, file='__main__.py'):
                         
     return module_list + [(file, dependencies)]
 
+def file_to_module(file, main_file='__main__.py'):
+    if file == main_file:
+        module_type = 'main'
+        name = ''
+    elif file.endswith('__init__.py'):
+        module_type = 'package'
+        name = file.replace('/__init__.py','').replace('/','.')
+    else:
+        module_type = 'module'
+        name = file.replace('.py','').replace('/','.')
+
+    return module_type, name
+
+def block(file, module_type, module_name, text_block, dependencies):
+    if module_type == 'main':
+        return(main_section_str.format(text=text_block,
+                                        file=file,
+                                        padded_dashes_0 = '-'*(63 - len(file)),
+                                        padded_dashes_1 = '-'*(65 - len(file))))
+        
+    elif module_type in ('module', 'package'):
+        if dependencies:
+            dependency_text = ", dependencies=" + str(list(sorted(dependencies)))
+        else:
+            dependency_text = ''
+        short_name = module_name.split('.')[-1]
+        text = "    " + "\n    ".join(text_block.split('\n'))
+        return(module_section_str.format(short_name = short_name,
+                                        name = module_name, 
+                                        file=file, 
+                                        text=text,
+                                        dependencies = dependency_text,
+                                        padded_dashes_0 = '-'*(63 - len(file)),
+                                        padded_dashes_1 = '-'*(65 - len(file))))
+
 def combine_into_one_file(package_dir, main_file='__main__.py', out='_combined.py', verbose=True):
     module_list = parse_import_structure(package_dir, main_file)
     visited = set()
@@ -128,54 +163,17 @@ def combine_into_one_file(package_dir, main_file='__main__.py', out='_combined.p
     with open(out, 'w') as combined:
         combined.write(fake_module_preamble_str)
 
-        for file, dependencies in module_list:
+        for file_name, dependencies in module_list:
             if verbose:
-                print("...", file)
-            with open(package_dir + file, 'r') as f:
-                if file == main_file:
-                    combined.write(main_section_str.format(text=f.read(),
-                                                    file=main_file,
-                                                    padded_dashes_0 = '-'*(63 - len(file)),
-                                                    padded_dashes_1 = '-'*(65 - len(file))))
-                
-                elif file.endswith('__init__.py'):
-                    path = file.replace('__init__.py','')
-                    name = path.replace('/','.')[:-1]
-                    visited.add(name)
-                    dependencies = dependencies - visited
-                    if dependencies:
-                        dependencies = ", dependencies=" + str(list(sorted(dependencies)))
-                    else:
-                        dependencies = ''
-                    short_name = name.split('.')[-1]
-                    text = "    " + "\n    ".join(f.read().split('\n'))
-                    combined.write(package_section_str.format(path=path, 
-                                                    short_name = short_name,
-                                                    name = name, 
-                                                    file=file, 
-                                                    text=text,
-                                                    dependencies = dependencies,
-                                                    padded_dashes_0 = '-'*(63 - len(file)),
-                                                    padded_dashes_1 = '-'*(65 - len(file))))
-                
-                else:
-                    name = file.replace('/','.').replace('.py','')
-                    visited.add(name)
-                    dependencies = dependencies - visited
-                    if dependencies:
-                        dependencies = ", dependencies=" + str(list(sorted(dependencies)))
-                    else:
-                        dependencies = ''
-                    short_name = name.split('.')[-1]
-                    text = "    " + "\n    ".join(f.read().split('\n'))
-                    combined.write(module_section_str.format(name=name, 
-                                                    short_name = short_name,
-                                                    file=file, 
-                                                    text=text,
-                                                    dependencies = dependencies,
-                                                    padded_dashes_0 = '-'*(63 - len(file)),
-                                                    padded_dashes_1 = '-'*(65 - len(file))))
+                print("...", file_name)
 
+            module_type, module_name = file_to_module(file_name)
+            visited.add(module_name)
+            remaining_dependencies = dependencies - visited
+
+            with open(package_dir + file_name, 'r') as f:
+                b = block(file_name, module_type, module_name, f.read(), remaining_dependencies)
+                combined.write(b)
 
 if __name__ == '__main__':
     import sys # replace with argparser
