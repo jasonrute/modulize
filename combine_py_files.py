@@ -50,9 +50,12 @@ def modulize(module_name, dependencies=[]):
 
 main_section_str = \
 """\n
-##----- Begin {file} {padded_dashes_0}##
+def {short_name}():
+    ##----- Begin {file} {padded_dashes_0}##
 {text}
-##----- End {file} {padded_dashes_1}##
+    ##----- End {file} {padded_dashes_1}##
+
+{short_name}()
 """
 
 package_section_str = \
@@ -117,7 +120,7 @@ def parse_import_structure(package_dir, file='__main__.py'):
 def file_to_module(file, main_file='__main__.py'):
     if file == main_file:
         module_type = 'main'
-        name = ''
+        name = file.replace('.py','').replace('/','.')
     elif file.endswith('__init__.py'):
         module_type = 'package'
         name = file.replace('/__init__.py','').replace('/','.')
@@ -128,8 +131,11 @@ def file_to_module(file, main_file='__main__.py'):
     return module_type, name
 
 def block(file, module_type, module_name, text_block, dependencies):
+    short_name = module_name.split('.')[-1]
+    text = "    " + "\n    ".join(text_block.split('\n'))
     if module_type == 'main':
-        return(main_section_str.format(text=text_block,
+        return(main_section_str.format(short_name = short_name,
+                                        text=text,
                                         file=file,
                                         padded_dashes_0 = '-'*(63 - len(file)),
                                         padded_dashes_1 = '-'*(65 - len(file))))
@@ -139,8 +145,6 @@ def block(file, module_type, module_name, text_block, dependencies):
             dependency_text = ", dependencies=" + str(list(sorted(dependencies)))
         else:
             dependency_text = ''
-        short_name = module_name.split('.')[-1]
-        text = "    " + "\n    ".join(text_block.split('\n'))
         return(module_section_str.format(short_name = short_name,
                                         name = module_name, 
                                         file=file, 
