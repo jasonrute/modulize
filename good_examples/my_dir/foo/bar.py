@@ -1,2 +1,2 @@
 def bar_func(x):
-    return x + ' bar'
+    return x + ' bar2'

@@ -9,12 +9,9 @@ class MockModule(ModuleType):
             get_mock_module(package).__path__ = []
             setattr(get_mock_module(package), module, self)
 
-    def _set_class_(self, cls):
-        self._cls_ = cls
-        self.__doc__ = cls.__doc__
-
-    def __getattr__(self, name):
-        return getattr(self._cls_, name)
+    def _initialize_(self, module_code):
+        self.__dict__.update(module_code(self.__name__))
+        self.__doc__ = module_code.__doc__
 
 def get_mock_module(module_name):
     if module_name not in sys.modules:
@@ -23,32 +20,31 @@ def get_mock_module(module_name):
 
 def modulize(module_name, dependencies=[]):
     for d in dependencies: get_mock_module(d)
-    global __name__; stored_name, __name__ = __name__, module_name
-    def wrapper(cls):
-        get_mock_module(module_name)._set_class_(cls)
-        global __name__; __name__ = stored_name
-    return wrapper
+    return get_mock_module(module_name)._initialize_
 
 ##===========================================================================##
 
 @modulize('foo')
-class _foo:
+def _foo(__name__):
     ##----- Begin foo/__init__.py ------------------------------------------------##
     foo_var = 'foo'
     ##----- End foo/__init__.py --------------------------------------------------##
-    pass
+    return locals()
 
 @modulize('foo.bar')
-class _bar:
+def _bar(__name__):
     ##----- Begin foo/bar.py -----------------------------------------------------##
     def bar_func(x):
         return x + ' bar'
     ##----- End foo/bar.py -------------------------------------------------------##
-    pass
+    return locals()
 
 
-##----- Begin __main__.py ----------------------------------------------------##
-import foo.bar
-fb = foo.bar.bar_func(foo.foo_var)
-print(fb) # foo bar
-##----- End __main__.py ------------------------------------------------------##
+def __main__():
+    ##----- Begin __main__.py ----------------------------------------------------##
+    import foo.bar
+    fb = foo.bar.bar_func(foo.foo_var)
+    print(fb) # foo bar
+    ##----- End __main__.py ------------------------------------------------------##
+
+__main__()
