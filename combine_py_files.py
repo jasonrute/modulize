@@ -179,6 +179,7 @@ if __name__ == '__main__':
 
     if os.path.isfile(input_path):
         start_dir, start_file = os.path.split(input_path)
+        start_dir = os.path.join(start_dir, '') # adds a slash at the end
         combine_into_one_file(start_dir, start_file, out=output_file)
     elif os.path.isdir(input_path):
         start_dir = os.path.join(input_path, '') # puts in proper form with slash at end
